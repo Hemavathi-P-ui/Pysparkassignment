@@ -1,0 +1,834 @@
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
+
+val spark = SparkSession.builder()
+  .appName("Spark SQL Example")
+  .master("local[*]") // Adjust based on your environment
+  .getOrCreate()
+
+// 1. Employee Status Check
+val emp = Seq(
+  ("karthik", "2024-11-01"),
+  ("neha", "2024-10-20"),
+  ("priya", "2024-10-28"),
+  ("mohan", "2024-11-02"),
+  ("ajay", "2024-09-15"),
+  ("vijay", "2024-10-30"),
+  ("veer", "2024-10-25"),
+  ("aatish", "2024-10-10"),
+  ("animesh", "2024-10-15"),
+  ("nishad", "2024-11-01"),
+  ("varun", "2024-10-05"),
+  ("aadil", "2024-09-30")
+).toDF("name", "last_checkin")
+
+emp.createOrReplaceTempView("employees")
+spark.sql("SELECT name, last_checkin, " +
+  "CASE WHEN DATEDIFF('2024-11-03', last_checkin) <= 7 THEN 'Active' ELSE 'Inactive' END AS Status " +
+  "FROM employees").show()
+
+// 2. Sales Performance by Agent
+val sales = Seq(
+  ("karthik", 60000),
+  ("neha", 48000),
+  ("priya", 30000),
+  ("mohan", 24000),
+  ("ajay", 52000),
+  ("vijay", 45000),
+  ("veer", 70000),
+  ("aatish", 23000),
+  ("animesh", 15000),
+  ("nishad", 8000),
+  ("varun", 29000),
+  ("aadil", 32000)
+).toDF("name", "total_sales")
+
+sales.createOrReplaceTempView("sales_performance")
+spark.sql("SELECT name, " +
+  "CASE WHEN total_sales > 50000 THEN 'Excellent' " +
+  "     WHEN total_sales > 25000 THEN 'Good' " +
+  "     ELSE 'Need Improvement' END AS performance_status " +
+  "FROM sales_performance").show()
+
+// 3. Project Allocation and Workload Analysis
+val workload = Seq(
+  ("karthik", "ProjectA", 120),
+  ("karthik", "ProjectB", 100),
+  ("neha", "ProjectC", 80),
+  ("neha", "ProjectD", 30),
+  ("priya", "ProjectE", 110),
+  ("mohan", "ProjectF", 40),
+  ("ajay", "ProjectG", 70),
+  ("vijay", "ProjectH", 150),
+  ("veer", "ProjectI", 190),
+  ("aatish", "ProjectJ", 60),
+  ("animesh", "ProjectK", 95),
+  ("nishad", "ProjectL", 210),
+  ("varun", "ProjectM", 50),
+  ("aadil", "ProjectN", 90)
+).toDF("name", "project", "hours")
+
+workload.createOrReplaceTempView("workload_analysis")
+spark.sql("SELECT name, SUM(hours) AS total_hr, " +
+  "CASE WHEN SUM(hours) > 200 THEN 'Overloaded' " +
+  "     WHEN SUM(hours) BETWEEN 100 AND 200 THEN 'Balanced' " +
+  "     ELSE 'Underutilized' END AS work_load " +
+  "FROM workload_analysis GROUP BY name").createOrReplaceTempView("workload_summary")
+
+spark.sql("SELECT work_load, COUNT(*) AS count FROM workload_summary GROUP BY work_load").show()
+
+// 4. Overtime Calculation for Employees
+val employees = Seq(
+  ("karthik", 62),
+  ("neha", 50),
+  ("priya", 30),
+  ("mohan", 65),
+  ("ajay", 40),
+  ("vijay", 47),
+  ("veer", 55),
+  ("aatish", 30),
+  ("animesh", 75),
+  ("nishad", 60)
+).toDF("name", "hours_worked")
+
+employees.createOrReplaceTempView("employee_hours")
+spark.sql("SELECT name, " +
+  "CASE WHEN hours_worked > 60 THEN 'Excessive Overtime' " +
+  "     WHEN hours_worked BETWEEN 45 AND 60 THEN 'Standard Overtime' " +
+  "     ELSE 'No Overtime' END AS status " +
+  "FROM employee_hours").createOrReplaceTempView("overtime_status")
+
+spark.sql("SELECT status, COUNT(*) AS count FROM overtime_status GROUP BY status").show()
+
+// 5. Customer Age Grouping
+val customers = Seq(
+  ("karthik", 22),
+  ("neha", 28),
+  ("priya", 40),
+  ("mohan", 55),
+  ("ajay", 32),
+  ("vijay", 18),
+  ("veer", 47),
+  ("aatish", 38),
+  ("animesh", 60),
+  ("nishad", 25)
+).toDF("name", "age")
+
+customers.createOrReplaceTempView("customer_ages")
+spark.sql("SELECT name, " +
+  "CASE WHEN age < 25 THEN 'Youth' " +
+  "     WHEN age BETWEEN 25 AND 45 THEN 'Adult' " +
+  "     ELSE 'Senior' END AS group " +
+  "FROM customer_ages").createOrReplaceTempView("customer_groups")
+
+spark.sql("SELECT group, COUNT(*) AS count FROM customer_groups GROUP BY group").show()
+
+// 6. Vehicle Mileage Analysis
+val vehicles = Seq(
+  ("CarA", 30),
+  ("CarB", 22),
+  ("CarC", 18),
+  ("CarD", 15),
+  ("CarE", 10),
+  ("CarF", 28),
+  ("CarG", 12),
+  ("CarH", 35),
+  ("CarI", 25),
+  ("CarJ", 16)
+).toDF("vehicle_name", "mileage")
+
+vehicles.createOrReplaceTempView("vehicle_mileage")
+spark.sql("SELECT vehicle_name, " +
+  "CASE WHEN mileage > 25 THEN 'High Efficiency' " +
+  "     WHEN mileage BETWEEN 15 AND 25 THEN 'Moderate Efficiency' " +
+  "     ELSE 'Low Efficiency' END AS efficiency " +
+  "FROM vehicle_mileage").show()
+
+// 7. Student Grade Classification
+val students = Seq(
+  ("karthik", 95),
+  ("neha", 82),
+  ("priya", 74),
+  ("mohan", 91),
+  ("ajay", 67),
+  ("vijay", 80),
+  ("veer", 85),
+  ("aatish", 72),
+  ("animesh", 90),
+  ("nishad", 60)
+).toDF("name", "score")
+
+students.createOrReplaceTempView("student_scores")
+spark.sql("SELECT name, " +
+  "CASE WHEN score >= 90 THEN 'Excellent' " +
+  "     WHEN score BETWEEN 75 AND 89 THEN 'Good' " +
+  "     ELSE 'Needs Improvement' END AS status " +
+  "FROM student_scores").createOrReplaceTempView("student_grades")
+
+spark.sql("SELECT status, COUNT(*) AS count FROM student_grades GROUP BY status").show()
+
+// 8. Product Inventory Check
+val inventory = Seq(
+  ("ProductA", 120),
+  ("ProductB", 95),
+  ("ProductC", 45),
+  ("ProductD", 200),
+  ("ProductE", 75),
+  ("ProductF", 30),
+  ("ProductG", 85),
+  ("ProductH", 100),
+  ("ProductI", 60),
+  ("ProductJ", 20)
+).toDF("product_name", "stock_quantity")
+
+inventory.createOrReplaceTempView("product_inventory")
+spark.sql("SELECT product_name, " +
+  "CASE WHEN stock_quantity > 100 THEN 'Overstocked' " +
+  "     WHEN stock_quantity BETWEEN 50 AND 100 THEN 'Normal' " +
+  "     ELSE 'Low Stock' END AS total_stock " +
+  "FROM product_inventory").createOrReplaceTempView("inventory_status")
+
+spark.sql("SELECT total_stock, COUNT(*) AS count FROM inventory_status GROUP BY total_stock").show()
+
+// 9. Employee Bonus Calculation Based on Performance and Department
+val employeeData = Seq(
+  ("karthik", "Sales", 85),
+  ("neha", "Marketing", 78),
+  ("priya", "IT", 90),
+  ("mohan", "Finance", 65),
+  ("ajay", "Sales", 55),
+  ("vijay", "Marketing", 82),
+  ("veer", "HR", 72),
+  ("aatish", "Sales", 88),
+  ("animesh", "Finance", 95),
+  ("nishad", "IT", 60)
+).toDF("name", "department", "performance_score")
+
+employeeData.createOrReplaceTempView("employee_bonus")
+spark.sql("SELECT name, department, performance_score, " +
+  "CASE WHEN department IN ('Sales', 'Marketing') AND performance_score > 80 THEN 0.20 " +
+  "     WHEN performance_score > 70 THEN 0.15 " +
+  "     ELSE 0 END AS bonus_percentage, " +
+  "(performance_score * " +
+  "CASE WHEN department IN ('Sales', 'Marketing') AND performance_score > 80 THEN 0.20 " +
+  "     WHEN performance_score > 70 THEN 0.15 " +
+  "     ELSE 0 END) AS bonus " +
+  "FROM employee_bonus").createOrReplaceTempView("bonus_summary")
+
+spark.sql("SELECT department, SUM(bonus) AS bonusamt FROM bonus_summary GROUP BY department").show()
+
+// 10. Product Return Analysis with Multi-Level Classification
+val products = Seq(
+  ("Laptop", "Electronics", 120, 45),
+  ("Smartphone", "Electronics", 80, 60),
+  ("Tablet", "Electronics", 50, 72),
+  ("Headphones", "Accessories", 110, 47),
+  ("Shoes", "Clothing", 90, 55),
+  ("Jacket", "Clothing", 30, 80),
+  ("TV", "Electronics", 150, 40),
+  ("Watch", "Accessories", 60, 65),
+  ("Pants", "Clothing", 25, 75),
+  ("Camera", "Electronics", 95, 58)
+).toDF("product_name", "category", "return_count", "satisfaction_score")
+
+products.createOrReplaceTempView("product_returns")
+spark.sql("SELECT product_name, " +
+  "CASE WHEN return_count > 100 AND satisfaction_score < 50 THEN 'High Return Rate' " +
+  "     WHEN return_count BETWEEN 50 AND 100 AND satisfaction_score BETWEEN 50 AND 70 THEN 'Moderate Return Rate' " +
+  "     ELSE 'Low Return Rate' END AS Rate " +
+  "FROM product_returns").createOrReplaceTempView("return_rates")
+
+spark.sql("SELECT Rate, COUNT(*) AS count FROM return_rates GROUP BY Rate").show()
+
+// 11. Customer Spending Pattern Based on Age and Membership Level
+val customersSpending = Seq(
+  ("karthik", "Premium", 1050, 32),
+  ("neha", "Standard", 800, 28),
+  ("priya", "Premium", 1200, 40),
+  ("mohan", "Basic", 300, 35),
+  ("ajay", "Standard", 700, 25),
+  ("vijay", "Premium", 500, 45),
+  ("veer", "Basic", 450, 33),
+  ("aatish", "Standard", 600, 29),
+  ("animesh", "Premium", 1500, 60),
+  ("nishad", "Basic", 200, 21)
+).toDF("name", "membership", "spending", "age")
+
+customersSpending.createOrReplaceTempView("customer_spending")
+spark.sql("SELECT name, membership, " +
+  "CASE WHEN spending > 1000 AND membership = 'Premium' THEN 'High Spender' " +
+  "     WHEN spending BETWEEN 500 AND 1000 AND membership = 'Standard' THEN 'Average Spender' " +
+  "     ELSE 'Low Spender' END AS spending_category " +
+  "FROM customer_spending").createOrReplaceTempView("spending_categories")
+
+spark.sql("SELECT membership, AVG(spending) AS avg_spending FROM customer_spending GROUP BY membership").createOrReplaceTempView("membership_avg")
+
+spark.sql("SELECT cs.name, cs.spending_category, ma.avg_spending " +
+  "FROM spending_categories cs JOIN membership_avg ma ON cs.membership = ma.membership").show()
+
+// 12. E-commerce Order Fulfillment Timeliness Based on Product Type and Location
+val orders = Seq(
+  ("Order1", "Laptop", "Domestic", 2),
+  ("Order2", "Shoes", "International", 8),
+  ("Order3", "Smartphone", "Domestic", 3),
+  ("Order4", "Tablet", "International", 5),
+  ("Order5", "Watch", "Domestic", 7),
+  ("Order6", "Headphones", "International", 10),
+  ("Order7", "Camera", "Domestic", 1),
+  ("Order8", "Shoes", "International", 9),
+  ("Order9", "Laptop", "Domestic", 6),
+  ("Order10", "Tablet", "International", 4)
+).toDF("order_id", "product_type", "origin", "delivery_days")
+
+orders.createOrReplaceTempView("order_fulfillment")
+spark.sql("SELECT order_id, product_type, " +
+  "CASE WHEN delivery_days > 7 AND origin = 'International' THEN 'Delayed' " +
+  "     WHEN delivery_days BETWEEN 3 AND 7 THEN 'On-Time' " +
+  "     ELSE 'Fast' END AS category " +
+  "FROM order_fulfillment").createOrReplaceTempView("fulfillment_status")
+
+spark.sql("SELECT product_type, category, COUNT(order_id) AS count_prod " +
+  "FROM fulfillment_status GROUP BY product_type, category ORDER BY product_type, category").show()
+
+// 13. Financial Risk Level Classification for Loan Applicants
+val loan_applicants = Seq(
+  ("karthik", 60000, 120000, 590),
+  ("neha", 90000, 180000, 610),
+  ("priya", 50000, 75000, 680),
+  ("mohan", 120000, 240000, 560),
+  ("ajay", 45000, 60000, 620),
+  ("vijay", 100000, 100000, 700),
+  ("veer", 30000, 90000, 580),
+  ("aatish", 85000, 85000, 710),
+  ("animesh", 50000, 100000, 650),
+  ("nishad", 75000, 200000, 540)
+).toDF("name", "income", "loan_amount", "credit_score")
+
+loan_applicants.createOrReplaceTempView("loan_applicants_data")
+spark.sql("SELECT name, income, loan_amount, credit_score, " +
+  "CASE WHEN income < 50000 THEN '< 50k' " +
+  "     WHEN income BETWEEN 50000 AND 100000 THEN '50-100k' " +
+  "     ELSE '> 100k' END AS income_range, " +
+  "CASE WHEN loan_amount > 2 * income AND credit_score < 600 THEN 'High Risk' " +
+  "     WHEN loan_amount BETWEEN income AND 2 * income AND credit_score BETWEEN 600 AND 700 THEN 'Moderate Risk' " +
+  "     ELSE 'Low Risk' END AS Risk_level " +
+  "FROM loan_applicants_data").createOrReplaceTempView("loan_risk_summary")
+
+spark.sql("SELECT income_range, Risk_level, AVG(credit_score) AS avg_creditscore " +
+  "FROM loan_risk_summary GROUP BY income_range, Risk_level").filter("avg_creditscore < 650").show()
+
+
+// Create the DataFrame from the loan applicants data
+val loan_applicants = Seq(
+  ("karthik", 60000, 120000, 590),
+  ("neha", 90000, 180000, 610),
+  ("priya", 50000, 75000, 680),
+  ("mohan", 120000, 240000, 560),
+  ("ajay", 45000, 60000, 620),
+  ("vijay", 100000, 100000, 700),
+  ("veer", 30000, 90000, 580),
+  ("aatish", 85000, 85000, 710),
+  ("animesh", 50000, 100000, 650),
+  ("nishad", 75000, 200000, 540)
+).toDF("name", "income", "loan_amount", "credit_score")
+
+loan_applicants.createOrReplaceTempView("loan_applicants_data")
+
+val result = spark.sql("""
+  SELECT name, income, credit_score,
+    CASE 
+      WHEN income < 50000 THEN '< 50k'
+      WHEN income BETWEEN 50000 AND 100000 THEN '50-100k'
+      ELSE '> 100k'
+    END AS income_range,
+    CASE 
+      WHEN loan_amount > 2 * income AND credit_score < 600 THEN 'High Risk'
+      WHEN loan_amount BETWEEN income AND 2 * income AND credit_score BETWEEN 600 AND 700 THEN 'Moderate Risk'
+      ELSE 'Low Risk'
+    END AS Risk_level
+  FROM loan_applicants_data
+""")
+
+
+result.createOrReplaceTempView("classified_loans")
+
+val avg_credit_scores = spark.sql("""
+  SELECT income_range, Risk_level, AVG(credit_score) AS avg_creditscore
+  FROM classified_loans
+  GROUP BY income_range, Risk_level
+""")
+
+avg_credit_scores.filter("avg_creditscore < 650").show()
+
+
+
+// Scenario 15: Customer Purchase Recency Categorization
+val customerPurchases = Seq(
+  ("karthik", "Premium", 50, 5000),
+  ("neha", "Standard", 10, 2000),
+  ("priya", "Premium", 65, 8000),
+  ("mohan", "Basic", 90, 1200),
+  ("ajay", "Standard", 25, 3500),
+  ("vijay", "Premium", 15, 7000),
+  ("veer", "Basic", 75, 1500),
+  ("aatish", "Standard", 45, 3000),
+  ("animesh", "Premium", 20, 9000),
+  ("nishad", "Basic", 80, 1100)
+).toDF("name", "membership", "days_since_last_purchase", "total_purchase_amount")
+
+customerPurchases.createOrReplaceTempView("customer_purchases")
+
+spark.sql("""
+  SELECT membership, 
+         CASE 
+           WHEN days_since_last_purchase < 30 THEN 'Frequent' 
+           WHEN days_since_last_purchase BETWEEN 30 AND 60 THEN 'Occasional' 
+           ELSE 'Rare' 
+         END AS purchase, 
+         total_purchase_amount 
+  FROM customer_purchases
+""").createOrReplaceTempView("customer_purchase_details")
+
+spark.sql("""
+  SELECT membership, purchase, COUNT(*) AS count 
+  FROM customer_purchase_details 
+  GROUP BY membership, purchase
+""").show()
+
+spark.sql("""
+  SELECT AVG(total_purchase_amount) AS avg 
+  FROM customer_purchase_details 
+  WHERE purchase = 'Frequent' AND membership = 'Premium'
+""").show()
+
+spark.sql("""
+  SELECT membership, MIN(total_purchase_amount) AS min_purchase 
+  FROM customer_purchase_details 
+  WHERE purchase = 'Rare' 
+  GROUP BY membership
+""").show()
+
+// Scenario 16: Electricity Consumption and Rate Assignment
+val electricityUsage = Seq(
+  ("House1", 550, 250),
+  ("House2", 400, 180),
+  ("House3", 150, 50),
+  ("House4", 500, 200),
+  ("House5", 600, 220),
+  ("House6", 350, 120),
+  ("House7", 100, 30),
+  ("House8", 480, 190),
+  ("House9", 220, 105),
+  ("House10", 150, 60)
+).toDF("household", "kwh_usage", "total_bill")
+
+electricityUsage.createOrReplaceTempView("electricity_usage")
+
+spark.sql("""
+  SELECT household, kwh_usage, total_bill,
+         CASE 
+           WHEN kwh_usage > 500 AND total_bill > 200 THEN 'High usage' 
+           WHEN kwh_usage BETWEEN 200 AND 500 AND total_bill BETWEEN 100 AND 200 THEN 'Medium usage' 
+           ELSE 'Low usage' 
+         END AS usage 
+  FROM electricity_usage
+""").createOrReplaceTempView("usage_details")
+
+spark.sql("""
+  SELECT usage, COUNT(*) AS count 
+  FROM usage_details 
+  GROUP BY usage
+""").show()
+
+spark.sql("""
+  SELECT MAX(total_bill) AS billmax 
+  FROM usage_details 
+  WHERE usage = 'High usage'
+""").show()
+
+spark.sql("""
+  SELECT AVG(kwh_usage) AS avg_bill 
+  FROM usage_details 
+  WHERE usage = 'Medium usage'
+""").show()
+
+spark.sql("""
+  SELECT COUNT(*) 
+  FROM usage_details 
+  WHERE usage = 'Low usage' AND kwh_usage > 300
+""").show()
+
+// Scenario 17: Employee Salary Band and Performance Classification
+val employees = Seq(
+  ("karthik", "IT", 110000, 12, 88),
+  ("neha", "Finance", 75000, 8, 70),
+  ("priya", "IT", 50000, 5, 65),
+  ("mohan", "HR", 120000, 15, 92),
+  ("ajay", "IT", 45000, 3, 50),
+  ("vijay", "Finance", 80000, 7, 78),
+  ("veer", "Marketing", 95000, 6, 85),
+  ("aatish", "HR", 100000, 9, 82),
+  ("animesh", "Finance", 105000, 11, 88),
+  ("nishad", "IT", 30000, 2, 55)
+).toDF("name", "department", "salary", "experience", "performance_score")
+
+employees.createOrReplaceTempView("employees")
+
+spark.sql("""
+  SELECT name, department, salary, experience, performance_score,
+         CASE 
+           WHEN salary > 100000 AND experience > 10 THEN 'Senior' 
+           WHEN salary BETWEEN 50000 AND 100000 AND experience BETWEEN 5 AND 10 THEN 'Mid-Level' 
+           ELSE 'Junior' 
+         END AS salary_band 
+  FROM employees
+""").createOrReplaceTempView("salary_details")
+
+spark.sql("""
+  SELECT department, salary_band, COUNT(*) AS count 
+  FROM salary_details 
+  GROUP BY department, salary_band
+""").show()
+
+spark.sql("""
+  SELECT salary_band, AVG(performance_score) AS avg_score 
+  FROM salary_details 
+  GROUP BY salary_band
+""").createOrReplaceTempView("salary_band_avg")
+
+spark.sql("""
+  SELECT * 
+  FROM salary_band_avg 
+  WHERE avg_score > 80
+""").show()
+
+spark.sql("""
+  SELECT * 
+  FROM salary_details 
+  WHERE salary_band = 'Mid-Level' AND performance_score > 85 AND experience > 7
+""").show()
+
+// Scenario 18: Product Sales Analysis
+val productSales = Seq(
+  ("Product1", 250000, 5),
+  ("Product2", 150000, 8),
+  ("Product3", 50000, 20),
+  ("Product4", 120000, 10),
+  ("Product5", 300000, 7),
+  ("Product6", 60000, 18),
+  ("Product7", 180000, 9),
+  ("Product8", 45000, 25),
+  ("Product9", 70000, 15),
+  ("Product10", 10000, 30)
+).toDF("product_name", "total_sales", "discount")
+
+productSales.createOrReplaceTempView("product_sales")
+
+spark.sql("""
+  SELECT product_name, total_sales, discount,
+         CASE 
+           WHEN total_sales > 200000 AND discount < 10 THEN 'Top Seller' 
+           WHEN total_sales BETWEEN 100000 AND 200000 THEN 'Moderate Seller' 
+           ELSE 'Low Seller' 
+         END AS seller 
+  FROM product_sales
+""").createOrReplaceTempView("sales_details")
+
+spark.sql("""
+  SELECT seller, COUNT(*) AS count 
+  FROM sales_details 
+  GROUP BY seller
+""").show()
+
+spark.sql("""
+  SELECT MAX(total_sales) AS max_sales 
+  FROM sales_details 
+  WHERE seller = 'Top Seller'
+""").show()
+
+spark.sql("""
+  SELECT MIN(discount) AS min_discount 
+  FROM sales_details 
+  WHERE seller = 'Moderate Seller'
+""").show()
+
+spark.sql("""
+  SELECT * 
+  FROM sales_details 
+  WHERE seller = 'Low Seller' AND total_sales > 50000 AND discount > 15
+""").show()
+
+// Scenario 19: Customer Loyalty Analysis
+val customerLoyalty = Seq(
+  ("Customer1", 25, 700),
+  ("Customer2", 15, 400),
+  ("Customer3", 5, 50),
+  ("Customer4", 18, 450),
+  ("Customer5", 22, 600),
+  ("Customer6", 2, 80),
+  ("Customer7", 12, 300),
+  ("Customer8", 6, 150),
+  ("Customer9", 10, 200),
+  ("Customer10", 1, 90)
+).toDF("customer_name", "purchase_frequency", "average_spending")
+
+customerLoyalty.createOrReplaceTempView("customer_loyalty")
+
+spark.sql("""
+  SELECT customer_name, purchase_frequency, average_spending,
+         CASE 
+           WHEN purchase_frequency > 20 AND average_spending > 500 THEN 'Highly Loyal' 
+           WHEN purchase_frequency BETWEEN 10 AND 20 THEN 'Moderately Loyal' 
+           ELSE 'Low Loyalty' 
+         END AS loyalty 
+  FROM customer_loyalty
+""").createOrReplaceTempView("loyalty_details")
+
+spark.sql("""
+  SELECT loyalty, COUNT(*) AS count 
+  FROM loyalty_details 
+  GROUP BY loyalty
+""").show()
+
+spark.sql("""
+  SELECT AVG(CASE WHEN loyalty = 'Highly Loyal' THEN average_spending END) AS avg_spend,
+         MIN(CASE WHEN loyalty = 'Moderately Loyal' THEN average_spending END) AS min_spend 
+  FROM loyalty_details
+""").show()
+
+spark.sql("""
+  SELECT * 
+  FROM loyalty_details 
+  WHERE loyalty = 'Low Loyalty' AND average_spending < 100 AND purchase_frequency < 5
+""").show()
+
+// Scenario 20: E-commerce Return Rate Analysis
+val ecommerceReturn = Seq(
+  ("Product1", 75, 25),
+  ("Product2", 40, 15),
+  ("Product3", 30, 5),
+  ("Product4", 60, 18),
+  ("Product5", 100, 30),
+  ("Product6", 45, 10),
+  ("Product7", 80, 22),
+  ("Product8", 35, 8),
+  ("Product9", 25, 3),
+  ("Product10", 90, 12)
+).toDF("product_name", "sale_price", "return_rate")
+
+ecommerceReturn.createOrReplaceTempView("ecommerce_return")
+
+spark.sql("""
+  SELECT product_name, sale_price, return_rate,
+         CASE 
+           WHEN return_rate > 20 THEN 'High Return' 
+           WHEN return_rate BETWEEN 10 AND 20 THEN 'Medium Return' 
+           ELSE 'Low Return' 
+         END AS returns 
+  FROM ecommerce_return
+""").createOrReplaceTempView("return_details")
+
+spark.sql("""
+  SELECT returns, COUNT(*) AS count 
+  FROM return_details 
+  GROUP BY returns
+""").show()
+
+spark.sql("""
+  SELECT AVG(CASE WHEN returns = 'High Return' THEN sale_price END) AS avg_sales,
+         MAX(CASE WHEN returns = 'Medium Return' THEN return_rate END) AS max_returns 
+  FROM return_details
+""").show()
+
+spark.sql("""
+  SELECT * 
+  FROM return_details 
+  WHERE returns = 'Low Return' AND sale_price < 50 AND return_rate < 5
+""").show()
+
+// Scenario 21: Employee Productivity Scoring
+val employeeProductivity = Seq(
+  ("Emp1", 85, 6),
+  ("Emp2", 75, 4),
+  ("Emp3", 40, 1),
+  ("Emp4", 78, 5),
+  ("Emp5", 90, 7),
+  ("Emp6", 55, 3),
+  ("Emp7", 80, 5),
+  ("Emp8", 42, 2),
+  ("Emp9", 30, 1),
+  ("Emp10", 68, 4)
+).toDF("employee_id", "productivity_score", "project_count")
+
+employeeProductivity.createOrReplaceTempView("employee_productivity")
+
+spark.sql("""
+  SELECT employee_id, productivity_score, project_count,
+         CASE 
+           WHEN productivity_score > 80 AND project_count > 5 THEN 'High Performer' 
+           WHEN productivity_score BETWEEN 60 AND 80 THEN 'Average Performer' 
+           ELSE 'Low Performer' 
+         END AS Performance 
+  FROM employee_productivity
+""").createOrReplaceTempView("performance_details")
+
+spark.sql("""
+  SELECT Performance, COUNT(*) AS count 
+  FROM performance_details 
+  GROUP BY Performance
+""").show()
+
+spark.sql("""
+  SELECT AVG(CASE WHEN Performance = 'High Performer' THEN productivity_score END) AS avg_score,
+         MIN(CASE WHEN Performance = 'Average Performer' THEN productivity_score END) AS min_score 
+  FROM performance_details
+""").show()
+
+spark.sql("""
+  SELECT * 
+  FROM performance_details 
+  WHERE Performance = 'Low Performer' AND productivity_score < 50 AND project_count < 2
+""").show()
+
+// Scenario 22: Banking Fraud Detection
+val transactions = Seq(
+  ("Account1", "2024-11-01", 12000, 6, "Savings"),
+  ("Account2", "2024-11-01", 8000, 3, "Current"),
+  ("Account3", "2024-11-02", 2000, 1, "Savings"),
+  ("Account4", "2024-11-02", 15000, 7, "Savings"),
+  ("Account5", "2024-11-03", 9000, 4, "Current"),
+  ("Account6", "2024-11-03", 3000, 1, "Current"),
+  ("Account7", "2024-11-04", 13000, 5, "Savings"),
+  ("Account8", "2024-11-04", 6000, 2, "Current"),
+  ("Account9", "2024-11-05", 20000, 8, "Savings"),
+  ("Account10", "2024-11-05", 7000, 3, "Savings")
+).toDF("account_id", "transaction_date", "amount", "frequency", "account_type")
+
+transactions.createOrReplaceTempView("transactions")
+
+spark.sql("""
+  SELECT account_id, transaction_date, amount, frequency, account_type,
+         CASE 
+           WHEN amount > 10000 AND frequency > 5 THEN 'High Risk' 
+           WHEN amount BETWEEN 5000 AND 10000 AND frequency BETWEEN 2 AND 5 THEN 'Moderate Risk' 
+           ELSE 'Low Risk' 
+         END AS Risk 
+  FROM transactions
+""").createOrReplaceTempView("risk_details")
+
+spark.sql("""
+  SELECT Risk, COUNT(*) AS count 
+  FROM risk_details 
+  GROUP BY Risk
+""").show()
+
+spark.sql("""
+  SELECT account_id, SUM(amount) AS total 
+  FROM risk_details 
+  WHERE Risk = 'High Risk' 
+  GROUP BY account_id
+""").show()
+
+spark.sql("""
+  SELECT * 
+  FROM risk_details 
+  WHERE Risk = 'Moderate Risk' AND account_type = 'Savings' AND amount < 7500
+""").show()
+
+// Scenario 23: Hospital Patient Readmission Analysis
+val patients = Seq(
+  ("Patient1", 62, 10, 3, "ICU"),
+  ("Patient2", 45, 25, 1, "General"),
+  ("Patient3", 70, 8, 2, "ICU"),
+  ("Patient4", 55, 18, 3, "ICU"),
+  ("Patient5", 65, 30, 1, "General"),
+  ("Patient6", 80, 12, 4, "ICU"),
+  ("Patient7", 50, 40, 1, "General"),
+  ("Patient8", 78, 15, 2, "ICU"),
+  ("Patient9", 40, 35, 1, "General"),
+  ("Patient10", 73, 14, 3, "ICU")
+).toDF("patient_id", "age", "readmission_interval", "icu_admissions", "admission_type")
+
+patients.createOrReplaceTempView("patients")
+
+spark.sql("""
+  SELECT patient_id, age, readmission_interval, icu_admissions, admission_type,
+         CASE 
+           WHEN readmission_interval < 15 AND age > 60 THEN 'High Readmission Risk' 
+           WHEN readmission_interval BETWEEN 15 AND 30 THEN 'Moderate Risk' 
+           ELSE 'Low Risk' 
+         END AS category 
+  FROM patients
+""").createOrReplaceTempView("readmission_details")
+
+spark.sql("""
+  SELECT category, COUNT(*) AS count 
+  FROM readmission_details 
+  GROUP BY category
+""").show()
+
+spark.sql("""
+  SELECT AVG(readmission_interval) AS avg_read 
+  FROM readmission_details 
+  WHERE category = 'High Readmission Risk'
+""").show()
+
+spark.sql("""
+  SELECT * 
+  FROM readmission_details 
+  WHERE category = 'Moderate Risk' AND admission_type = 'ICU' AND icu_admissions > 2
+""").show()
+
+// Scenario 24: Student Graduation Prediction
+val students = Seq(
+  ("Student1", 70, 45, 60, 65, 75),
+  ("Student2", 80, 55, 58, 62, 67),
+  ("Student3", 65, 30, 45, 70, 55),
+  ("Student4", 90, 85, 80, 78, 76),
+  ("Student5", 72, 40, 50, 48, 52),
+  ("Student6", 88, 60, 72, 70, 68),
+  ("Student7", 74, 48, 62, 66, 70),
+  ("Student8", 82, 56, 64, 60, 66),
+  ("Student9", 78, 50, 48, 58, 55),
+  ("Student10", 68, 35, 42, 52, 45)
+).toDF("student_id", "attendance_percentage", "math_score", "science_score", "english_score", "history_score")
+
+students.createOrReplaceTempView("students")
+
+spark.sql("""
+  SELECT student_id, attendance_percentage, math_score, science_score, english_score, history_score,
+         ((math_score + science_score + english_score + history_score) / 4) AS avg_score,
+         CASE 
+           WHEN attendance_percentage < 75 AND ((math_score + science_score + english_score + history_score) / 4) < 50 THEN 'At Risk' 
+           WHEN attendance_percentage BETWEEN 75 AND 85 THEN 'Moderate Risk' 
+           ELSE 'Low Risk' 
+         END AS Risk 
+  FROM students
+""").createOrReplaceTempView("student_risk")
+
+spark.sql("""
+  SELECT Risk, COUNT(*) AS total_students 
+  FROM student_risk 
+  GROUP BY Risk
+""").show()
+
+spark.sql("""
+  SELECT AVG(avg_score) AS avg_read 
+  FROM student_risk 
+  WHERE Risk = 'At Risk'
+""").show()
+
+spark.sql("""
+  SELECT student_id,
+         ((math_score > 70).cast("int") + (science_score > 70).cast("int") + (english_score > 70).cast("int") + (history_score > 70).cast("int")) AS scores_count 
+  FROM student_risk 
+  WHERE Risk = 'Moderate Risk'
+""").createOrReplaceTempView("moderate_risk_students")
+
+spark.sql("""
+  SELECT * 
+  FROM moderate_risk_students 
+  WHERE scores_count >= 3
+""").show()
+
+

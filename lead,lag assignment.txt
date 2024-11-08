@@ -1,0 +1,275 @@
+import os
+from pyspark import SparkConf
+from pyspark.sql.functions import col, when
+from pyspark.sql import SparkSession
+from pyspark import SparkContext
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+from pyspark.sql.window import Window
+from pyspark.sql.functions import col, initcap,when, to_date, datediff, lit,sum,avg,count, min,max,lead,lag,rank,desc
+os.environ [ "PYSPARK_PYTHON"] = "C:/Users/002PV2744/Documents/Python/Python37/python.exe"
+
+confg = SparkConf()
+confg.set("spark.app.name", "spark prm")
+confg.set("spark.master", "local[*]")
+
+spark = SparkSession.builder.config(conf= confg).getOrCreate()
+
+# Calculating  total revenue in its category
+# ========================================
+# salesData= [
+#  ("Product1", "Category1", 100),
+#  ("Product2", "Category1", 200),
+#  ("Product3", "Category1", 150),
+#  ("Product4", "Category2", 300),
+#  ("Product5", "Category2", 250),
+#  ("Product6", "Category2", 180)
+# ]
+# salesData_df = spark.createDataFrame(salesData,["Product", "Category", "Revenue"])
+# window =Window.partitionBy(col("Category")).orderBy(col("Revenue"))
+# df = salesData_df.withColumn("max_revenue",max(col("Revenue")).over(window),col("Product"),col("Category"),col("Revenue")).show()
+# df1= df.filter(max(col("Revenue")) == col("Revenue"))
+# df2= df.select(col("Product"),col("Category"),col("Revenue")).show()
+#
+# window1 =Window.orderBy(col("Revenue").desc)
+# df = salesData_df.withColumn(col("Product"),col("Category"),col("Revenue"),lead(col("revenue"),1).over(window1)).show()
+
+
+# we want to find the difference between the price on each day with it’s previous day.
+# =======================================================================================
+salesdata = [(1, "KitKat",1000.0,"2021-01-01"),
+(1, "KitKat",2000.0,"2021-01-02"),
+(1, "KitKat",1000.0,"2021-01-03"),
+(1, "KitKat",2000.0,"2021-01-04"),
+(1, "KitKat",3000.0,"2021-01-05"),
+(1, "KitKat",1000.0,"2021-01-06")]
+salesdata_df = spark.createDataFrame(salesdata,["id", "Product", "price", "date"])
+window = Window.orderBy(col("date"))
+df = salesdata_df.withColumn("diffprice",col("price")-(lag(col("price"),1).over(window))).show()
+
+# 2. If salary is less than previous month we will mark it as "DOWN", if salary has increased then "UP"
+# ==========================================================================================================
+data = [(1,"John",1000,"01/01/2016"),
+(1,"John",2000,"02/01/2016"),
+(1,"John",1000,"03/01/2016"),
+(1,"John",2000,"04/01/2016"),
+(1,"John",3000,"05/01/2016"),
+(1,"John",1000,"06/01/2016")]
+data_df = spark.createDataFrame(data,["id", "name", "salary", "date"])
+
+window = Window.orderBy("date")
+df1 = data_df.withColumn("diff",when(col("salary") < lag(col("salary"),1).over(window),"DOWN")
+                         .when(col("salary") > lag(col("salary"),1).over(window), "UP")).show()
+
+
+# spark.sql(
+#       """
+#        select
+#        IT_ID,
+#         IT_Name,
+#         Price,
+#         PriceDate,
+#         Price-lead(Price,1) over(order by Price) as status
+#         from
+#         sales
+#        """
+#     ).show()
+
+# Calculate the lead time for each order within the same customer
+#  =================================================================
+load = [(101,"CustomerA","2023-09-01"),
+(103,"CustomerA","2023-09-03"),
+(102,"CustomerB","2023-09-02"),
+(104,"CustomerB","2023-09-04")]
+
+load_df = spark.createDataFrame(load,["order_id", "customer", "order_date"])
+
+window = Window.partitionBy("customer").orderBy("order_date")
+df2 = load_df.withColumn("lead_date",lead(to_date("order_date"),1).over(window)).show()
+
+#3. Calculate the lead and lag of the salary column ordered by id
+#  =================================================================
+
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.orderBy("id")
+df = data_df.withColumn("lag_salary",lag(col("salary")).over(window)) \
+    .withColumn("lead_salary",lead(col("salary")).over(window)).show()
+
+#4. Calculate the percentage change in salary from the previous row to the current row, ordered by id.
+#  =========================================================================================================
+
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+window = Window.orderBy("id")
+
+df = data_df.withColumn("lag_salary",lag(col("salary")).over(window)) \
+    .withColumn("percentage",((col("salary") - col("lag_salary"))/col("lag_salary")) * 100).show()
+
+
+# 5. Calculate the rolling sum of salary for the current row and the previous two rows, ordered by id.
+# =======================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+window = Window.orderBy("id").rowsBetween(-2, 0)
+
+df = data_df.withColumn("sum_salary",sum(col("salary")).over(window)).show()
+
+# 6. Calculate the difference between the current salary and the minimum salary within the last three rows, ordered by id
+# =========================================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+window = Window.orderBy("id").rowsBetween(-2,0)
+df = data_df.withColumn("min_salary",min(col("salary")).over(window)) \
+      .withColumn("diff_salary",col("salary") - col("min_salary")).show()
+
+# 7. Calculate the lead and lag of salary within each group of employees (grouped by name) ordered by id.
+# =========================================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+window = Window.partitionBy("name").orderBy("id")
+df = data_df.withColumn("lag_salary",lag(col("salary"),1).over(window)).withColumn("lead_salary",lead(col("salary"),1).over(window)).show()
+
+
+# 8. Calculate the lead and lag of the salary column for each employee ordered by id, but only for the emplo
+# yees who have a salary greater than 1500.
+# # =========================================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+df1 = data_df.filter(col("salary")>1500)
+window = Window.orderBy("id")
+
+df = df1.withColumn("lag_salary", lag(col("salary")).over(window)).withColumn("lead_salary",lead(col("salary")).over(window)).show()
+
+
+# 9. Calculate the lead and lag of the salary column for each employee, ordered by id, but only for the emplo
+# yees who have a change in salary greater than 500 from the previous row.
+# =========================================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+df1 = data_df.filter(col("salary")>1500)
+window = Window.orderBy("id")
+
+df = df1.withColumn("lag_salary", lag(col("salary")).over(window)).withColumn("lead_salary",lead(col("salary")).over(window)).show()
+
+
+# 10. Calculate the cumulative count of employees, ordered by id, and reset the count when the name changes.
+#===========================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.orderBy("id")
+
+df = data_df.withColumn("count", count(col("name")).over(window)).show()
+
+# 11. Calculate the running total of salary for each employee ordered by id.
+#===========================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.partitionBy("name").orderBy("id")
+df = data_df.withColumn("sum", sum(col("salary")).over(window)).show()
+
+
+# 12. Find the maximum salary for each employee’s group (partitioned by name) and display it for each row.
+#===========================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.partitionBy("name")
+df = data_df.withColumn("max", max(col("salary")).over(window)).show()
+
+
+# 13. Calculate the difference between the current salary and the average salary for each employee’s group
+# (partitioned by name) ordered by id.
+#===========================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.partitionBy("name").orderBy("id")
+df = data_df.withColumn("max", col("salary") - avg(col("salary")).over(window)).show()
+
+
+# 14. Calculate the rank of each employee based on their salary, ordered by salary in descending order.
+#===========================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.orderBy(desc("salary"))
+df = data_df.withColumn("rank", rank().over(window)).show()
+
+
+# 15. Calculate the lead and lag of the salary column, ordered by id, but only for the employees whose salari
+# es are strictly increasing (i.e., each employee’s salary is greater than the previous employee’s salary).
+#===========================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.orderBy("id")
+df = data_df.withColumn("lag_sal", lag(col("salary")).over(window)).withColumn("lead_sal", lead(col("salary")).over(window))
+df1 = df.withColumn("increase", col("salary") > col("lag_sal")).show()
+
+# 16. Calculate the lead and lag of the salary column ordered by id, but reset the lead and lag values when t
+# he employee’s name changes.
+#===========================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.partitionBy("name").orderBy("id")
+df = data_df.withColumn("lag_sal", lag(col("salary")).over(window)).withColumn("lead_sal", lead(col("salary")).over(window)).show()
+
+
+# 17. Calculate the percentage change in salary from the previous row to the current row, ordered by id, but
+# group the percentage changes by name.
+#===========================================================================================================
+data = [(1,"karthik",1000),
+(2,"moahn",  2000),
+(3,"vinay", 1500 ),
+(4,"Deva", 3000  )]
+data_df = spark.createDataFrame(data, ["id","name","salary"])
+
+window = Window.partitionBy("name").orderBy("id")
+df = data_df.withColumn("lag_sal", lag(col("salary")).over(window))
+df1 = df.withColumn("diff", ((col("salary") - col("lag_sal"))/col("lag_sal"))*100).show()
